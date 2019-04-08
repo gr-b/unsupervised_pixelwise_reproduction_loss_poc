@@ -57,7 +57,7 @@ def generate_data(w, h, n):
 	
 	return x, y
 
-n = 200
+n = 4000
 x_train, y_train = generate_data(w, h, n)
 
 
@@ -79,15 +79,23 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 	xcomp = (K.transpose(K.transpose(x_grid) - cx))**2
 	ycomp = (K.transpose(K.transpose(y_grid) - cy))**2 
 	
-	circle = greater_than_approx(
-			K.transpose(K.transpose(xcomp + ycomp)),
-		 	cr**2)
+	#circle = greater_than_approx(
+	#			K.transpose(K.transpose(xcomp + ycomp)),
+	#		 	cr**2)
+
+	circle_mat = K.transpose(K.transpose(xcomp + ycomp))
+	circle_threshold = cr**2
+
+	circle = 0.5*(circle_mat+circle_threshold + 
+			K.sqrt((circle_mat - circle_threshold)**2 + 0.01)
+		     )
+
 
 	circle = K.reshape(circle, (1, w*h))
 		
 
 	mse = K.mean((circle**2-y_true**2), axis=1)
-	return mse
+	return mse + (67-cr)**4
 	
 
 def model():
@@ -106,7 +114,7 @@ model = model()
 print(model.summary())
 
 x_train = x_train.reshape(n, w*h)
-model.fit(x_train, x_train, epochs=10, verbose=1, batch_size=batchSize)
+model.fit(x_train, x_train, epochs=2, verbose=1, batch_size=batchSize)
 
 
 x_test, y_test = generate_data(w, h, n)
