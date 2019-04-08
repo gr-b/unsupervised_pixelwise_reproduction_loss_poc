@@ -13,7 +13,7 @@ import tensorflow as tf
 from PIL import Image
 
 
-batchSize = 32
+batchSize = 1
 w, h = 100, 100
 
 image = Image.open('input.png')
@@ -67,8 +67,8 @@ def greater_than_approx(a, b):
 
 
 xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
-xgrid = np.stack([xgrid]*batchSize)
-ygrid = np.stack([ygrid]*batchSize)
+#xgrid = np.stack([xgrid]*batchSize)
+#ygrid = np.stack([ygrid]*batchSize)
 
 
 def pixelwise_reproduction_loss(y_true, y_pred):
@@ -83,7 +83,7 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 			K.transpose(K.transpose(xcomp + ycomp)),
 		 	cr**2)
 
-	circle = K.reshape(circle, (K.shape(y_true)[0], w*h))
+	circle = K.reshape(circle, (1, w*h))
 		
 
 	mse = K.mean((circle**2-y_true**2), axis=1)
@@ -119,7 +119,7 @@ print("MSE:" + str(mse))
 
 plt.imshow(x_test[0].reshape(w, h), cmap='gray')
 plt.show()
-y = y_test[0]
+y = y_pred[0]
 y_img = generate_single_circle_image(w, h, y[0], y[1], y[2])
 print(y_img.shape)
 plt.imshow(y_img, cmap='gray')
