@@ -5,6 +5,10 @@ from tensorflow.keras.layers import Input, Dense, Dropout, Lambda
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
+from tensorflow.keras import losses
+
+
+import tensorflow as tf
 
 from PIL import Image
 
@@ -66,9 +70,9 @@ xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
 xgrid = np.stack([xgrid]*batchSize)
 ygrid = np.stack([ygrid]*batchSize)
 
-def pixelwise_reproduction(y):
-	#n = K.shape(y)[0]
-	cx, cy, cr = y[:,0], y[:,1], y[:,2]
+
+def pixelwise_reproduction_loss(y_true, y_pred):
+	cx, cy, cr = y_pred[:,0], y_pred[:,1], y_pred[:,2]
 
 	x_grid, y_grid = K.variable(value=xgrid), K.variable(value=ygrid)
 	
@@ -78,25 +82,12 @@ def pixelwise_reproduction(y):
 	circle = greater_than_approx(
 			K.transpose(K.transpose(xcomp + ycomp)),
 		 	cr**2)
-	return circle #K.reshape(circle, (batchSize, w*h))	
 
-'''def pixelwise_reproduction(y):
-	n = y.shape[0]
-	cx, cy, cr = y[:,0], y[:,1], y[:,2]
+	circle = K.reshape(circle, (K.shape(y_true)[0], w*h))
+		
 
-	xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
-	xgrid, ygrid = K.variable(value=xgrid), K.variable(value=ygrid)
-
-	xgrid = np.stack([xgrid]*n)
-	ygrid = np.stack([ygrid]*n)
-
-
-	xcomp = ((xgrid.T - cx).T)**2
-	ycomp = ((ygrid.T - cy).T)**2 
-	
-	circle = ((xcomp + ycomp).T < cr**2).T
-	return circle
-'''
+	mse = K.mean((circle**2-y_true**2), axis=1)
+	return mse
 	
 
 def model():
@@ -108,14 +99,14 @@ def model():
 	model.add(Dense(3, activation='relu'))
 	# output is (x, y, r)
 	#model.add(Lambda(pixelwise_reproduction))
-	model.compile(pixelwise_reproduction_loss, optimizer='adam')
+	model.compile(loss=pixelwise_reproduction_loss, optimizer='adam')
 	return model
 
 model = model()
 print(model.summary())
 
 x_train = x_train.reshape(n, w*h)
-model.fit(x_train, x_train.reshape(n, w, h), epochs=10, verbose=1, batch_size=batchSize)
+model.fit(x_train, x_train, epochs=10, verbose=1, batch_size=batchSize)
 
 
 x_test, y_test = generate_data(w, h, n)
