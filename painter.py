@@ -1,14 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tensorflow.keras.layers import Input, Dense, Dropout
+from tensorflow.keras.layers import Input, Dense, Dropout, Lambda
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.models import load_model
+from tensorflow.keras import backend as K
 
 from PIL import Image
 
 
-
+batchSize = 32
 w, h = 100, 100
 
 image = Image.open('input.png')
@@ -56,6 +57,48 @@ n = 200
 x_train, y_train = generate_data(w, h, n)
 
 
+def greater_than_approx(a, b):
+	return 0.5*(a+b+K.abs(a-b))
+
+
+
+xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
+xgrid = np.stack([xgrid]*batchSize)
+ygrid = np.stack([ygrid]*batchSize)
+
+def pixelwise_reproduction(y):
+	#n = K.shape(y)[0]
+	cx, cy, cr = y[:,0], y[:,1], y[:,2]
+
+	x_grid, y_grid = K.variable(value=xgrid), K.variable(value=ygrid)
+	
+	xcomp = (K.transpose(K.transpose(x_grid) - cx))**2
+	ycomp = (K.transpose(K.transpose(y_grid) - cy))**2 
+	
+	circle = greater_than_approx(
+			K.transpose(K.transpose(xcomp + ycomp)),
+		 	cr**2)
+	return circle #K.reshape(circle, (batchSize, w*h))	
+
+'''def pixelwise_reproduction(y):
+	n = y.shape[0]
+	cx, cy, cr = y[:,0], y[:,1], y[:,2]
+
+	xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
+	xgrid, ygrid = K.variable(value=xgrid), K.variable(value=ygrid)
+
+	xgrid = np.stack([xgrid]*n)
+	ygrid = np.stack([ygrid]*n)
+
+
+	xcomp = ((xgrid.T - cx).T)**2
+	ycomp = ((ygrid.T - cy).T)**2 
+	
+	circle = ((xcomp + ycomp).T < cr**2).T
+	return circle
+'''
+	
+
 def model():
 	model = Sequential()
 	model.add(Dense(1024, input_shape=(w*h,), activation='relu'))
@@ -64,13 +107,15 @@ def model():
 	
 	model.add(Dense(3, activation='relu'))
 	# output is (x, y, r)
-	model.compile(loss='mean_squared_error', optimizer='adam')
+	#model.add(Lambda(pixelwise_reproduction))
+	model.compile(pixelwise_reproduction_loss, optimizer='adam')
 	return model
 
 model = model()
+print(model.summary())
 
 x_train = x_train.reshape(n, w*h)
-model.fit(x_train, y_train, epochs=10, verbose=1, batch_size=32)
+model.fit(x_train, x_train.reshape(n, w, h), epochs=10, verbose=1, batch_size=batchSize)
 
 
 x_test, y_test = generate_data(w, h, n)
