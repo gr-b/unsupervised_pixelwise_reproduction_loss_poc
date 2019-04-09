@@ -64,8 +64,8 @@ def generate_data(w, h, n):
 
 n = 2000
 x_train, y_train = generate_data(w, h, n)
-#x_train = np.array([x_train[0]]*n)
-#y_train = np.array([y_train[0]]*n)
+x_train = np.array([x_train[0]]*n)
+y_train = np.array([y_train[0]]*n)
 
 
 def greater_than_approx(a, b):
