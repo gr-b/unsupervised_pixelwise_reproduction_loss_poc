@@ -13,7 +13,7 @@ import tensorflow as tf
 from PIL import Image
 
 
-r = 40
+radius = 25
 batchSize = 1
 w, h = 100, 100
 
@@ -53,9 +53,11 @@ def generate_single_circle_image(w, h, cx, cy, cr):
 
 
 def generate_data(w, h, n):
-	y = np.array([[np.random.randint(0, w), np.random.randint(0, h)] for i in range(n)])
-	x = generate_circle_image(w, h, y[:, 0], y[:, 1], r)
+	y = np.array([[np.random.randint(0, w), np.random.randint(0, h), radius] for i in range(n)])
+	x = generate_circle_image(w, h, y[:, 0], y[:, 1], y[:, 2])
+	
 	return x, y
+
 
 n = 4000
 x_train, y_train = generate_data(w, h, n)
@@ -71,7 +73,7 @@ xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
 #ygrid = np.stack([ygrid]*batchSize)
 
 
-def pixelwise_reproduction_loss(y_true, y_pred):
+def pixelwise_reproduction(y_pred):
 	cx, cy = y_pred[:,0], y_pred[:,1]
 
 	x_grid, y_grid = K.variable(value=xgrid), K.variable(value=ygrid)
@@ -80,52 +82,59 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 	ycomp = (K.transpose(K.transpose(y_grid) - cy))**2 
 
 	circle_mat = K.transpose(K.transpose(xcomp + ycomp))
-	circle_threshold = r
+	circle_threshold = radius**2
 
 	circle = 0.5*(circle_mat+circle_threshold + 
-			K.sqrt((circle_threshold - circle_mat)**2 + 0.01)
+			K.sqrt((circle_mat - circle_threshold)**2 + 0.01)
 		     )
+
 
 	circle = K.reshape(circle, (1, w*h))
 		
+	return circle
 
-
-	mse = K.mean(((circle-y_true)**2), axis=1)
+def mse(y_true, y_pred):
+	mse = K.mean(((y_pred-y_true)**2), axis=1)
 	return mse
-	
 
 def model():
 	model = Sequential()
-	model.add(Dense(1024, input_shape=(w*h,), activation='relu'))
+	model.add(Dense(768, input_shape=(w*h,), activation='relu'))
 	model.add(Dropout(0.2))
-	model.add(Dense(64, activation='relu'))
+	model.add(Dense(256, activation='relu'))
+
+	model.add(Dropout(0.05))
+	model.add(Dense(128, activation='relu'))
 	
+	model.add(Dense(32, activation='relu'))
+
 	model.add(Dense(2, activation='relu'))
 	# output is (x, y, r)
-	#model.add(Lambda(pixelwise_reproduction))
-	model.compile(loss=pixelwise_reproduction_loss, optimizer='adam')
+	model.add(Lambda(pixelwise_reproduction))
+	model.compile(loss=mse, optimizer='adam')
 	return model
 
 model = model()
 print(model.summary())
 
 x_train = x_train.reshape(n, w*h)
-model.fit(x_train, x_train, epochs=1, verbose=1, batch_size=batchSize)
+model.fit(x_train, x_train, epochs=2, verbose=1, batch_size=batchSize)
 
 
 x_test, y_test = generate_data(w, h, n)
 x_test = x_test.reshape(n, w*h)
 y_pred = model.predict(x_test)
 
-mse = np.mean((y_pred-y_test)**2)
+#mse = np.mean((y_pred-y_test)**2)
 
-print("MSE:" + str(mse))
+#print("MSE:" + str(mse))
 
 plt.imshow(x_test[0].reshape(w, h), cmap='gray')
 plt.show()
 y = y_pred[0]
-y_img = generate_single_circle_image(w, h, y[0], y[1], r)
-print(y_img.shape)
+y_img = generate_single_circle_image(w, h, y[0], y[1], radius)
+
+
 plt.imshow(y_img, cmap='gray')
 plt.show()
 
