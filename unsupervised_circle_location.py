@@ -6,9 +6,23 @@ from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 from tensorflow.keras import losses
+from tensorflow.keras.callbacks import Callback
 
 
 import tensorflow as tf
+
+class Progress(Callback):
+	def __init__(self, model):
+		self.model = model
+		self.target_img, self.target_center = generate_data(w, h, 1)
+		self.target_img = self.target_img[0].reshape(w*h,)
+		self.target_center = self.target_center[0]
+
+	def on_batch_end(self, batch, logs={}):
+		result = model.predict(np.array([self.target_img]))
+		x, y = result[0]
+		#print("Target center: " + str(self.target_center) + " Predicted: " + str((x, y)))
+
 
 from PIL import Image
 
@@ -51,8 +65,8 @@ def generate_data(w, h, n):
 
 n = 2000
 x_train, y_train = generate_data(w, h, n)
-#x_train = np.array([x_train[0]]*n)
-#y_train = np.array([y_train[0]]*n)
+x_train = np.array([x_train[0]]*n)
+y_train = np.array([y_train[0]]*n)
 
 
 
@@ -96,8 +110,12 @@ def model():
 model = model()
 print(model.summary())
 
+progress = Progress(model)
+
 x_train = x_train.reshape(n, w*h)
-model.fit(x_train, x_train, epochs=1, verbose=1, batch_size=batchSize)
+model.fit(x_train, x_train, epochs=1, verbose=1, 
+	batch_size=batchSize,
+	callbacks=[progress])
 
 
 #x_test, y_test = generate_data(w, h, n)
