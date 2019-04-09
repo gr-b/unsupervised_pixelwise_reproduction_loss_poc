@@ -21,19 +21,6 @@ r = 25
 batchSize = 1
 w, h = 100, 100
 
-image = Image.open('input.png')
-image = image.resize((w, h))
-image = np.array(image)
-
-def toGrayscale(rgb):
-	r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
-	return 0.2989 * r + 0.5870 * g + 0.1140 * b
-
-grayimg = toGrayscale(image)
-#plt.imshow(grayimg, cmap='gray')
-#plt.show()
-#print(grayimg.shape)
-
 
 # Generates an image of the given width, height
 # With a randomly placed circle of random radius
@@ -64,12 +51,8 @@ def generate_data(w, h, n):
 
 n = 2000
 x_train, y_train = generate_data(w, h, n)
-x_train = np.array([x_train[0]]*n)
-y_train = np.array([y_train[0]]*n)
-
-
-def greater_than_approx(a, b):
-	return 0.5*(a+b+K.abs(a-b))
+#x_train = np.array([x_train[0]]*n)
+#y_train = np.array([y_train[0]]*n)
 
 
 
