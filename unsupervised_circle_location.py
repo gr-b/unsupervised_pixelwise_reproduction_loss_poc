@@ -87,7 +87,8 @@ def model():
 	model.add(Dense(256, activation='relu'))
 	model.add(Dense(128, activation='relu'))	
 	model.add(Dense(32, activation='relu'))
-	model.add(Dense(2, activation='relu'))
+	model.add(Dense(2, activation='sigmoid'))
+	model.add(Lambda(lambda x: x*w))
 	# output is (x, y, r)
 	model.compile(loss=pixelwise_reproduction_loss, optimizer='adam')
 	return model
