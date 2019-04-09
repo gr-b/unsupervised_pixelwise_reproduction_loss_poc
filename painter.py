@@ -88,19 +88,16 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 			K.sqrt((circle_mat - circle_threshold)**2 + 0.01)
 		     )
 
-	circle = K.reshape(circle, (1, w*h))
-		
+	circle = K.reshape(circle, (w*h, ))
 
-
-	mse = K.mean(((circle-y_true)**2), axis=1)
+	mse = K.mean(((circle-y_true)**2))
 	return mse
+	
 	
 
 def model():
 	model = Sequential()
-	model.add(Dense(768, input_shape=(w*h,), use_bias=False))
-	#model.add(BatchNormalization())
-	model.add(Activation("relu"))
+	model.add(Dense(768, input_shape=(w*h,), activation="relu"))
 	model.add(Dropout(0.2))	
 
 	model.add(Dense(256, activation='relu'))
@@ -108,7 +105,6 @@ def model():
 	model.add(Dense(32, activation='relu'))
 	model.add(Dense(2, activation='relu'))
 	# output is (x, y, r)
-	#model.add(Lambda(pixelwise_reproduction))
 	model.compile(loss=pixelwise_reproduction_loss, optimizer='adam')
 	return model
 
