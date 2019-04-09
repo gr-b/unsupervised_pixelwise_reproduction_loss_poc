@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tensorflow.keras.layers import Input, Dense, Dropout, Lambda
+from tensorflow.keras.layers import Input, Dense, Dropout, Lambda, BatchNormalization, Activation
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
@@ -13,7 +13,7 @@ import tensorflow as tf
 from PIL import Image
 
 
-r = 40
+r = 25
 batchSize = 1
 w, h = 100, 100
 
@@ -57,8 +57,10 @@ def generate_data(w, h, n):
 	x = generate_circle_image(w, h, y[:, 0], y[:, 1], r)
 	return x, y
 
-n = 4000
-x_train, y_train = generate_data(w, h, n)
+n = 2000
+x_train, y_train = generate_data(w, h, 1)
+x_train = np.array([x_train[0]]*n)
+y_train = np.array([y_train[0]]*n)
 
 
 def greater_than_approx(a, b):
@@ -83,7 +85,7 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 	circle_threshold = r
 
 	circle = 0.5*(circle_mat+circle_threshold + 
-			K.sqrt((circle_threshold - circle_mat)**2 + 0.01)
+			K.sqrt((circle_mat - circle_threshold)**2 + 0.01)
 		     )
 
 	circle = K.reshape(circle, (1, w*h))
@@ -96,10 +98,14 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 
 def model():
 	model = Sequential()
-	model.add(Dense(1024, input_shape=(w*h,), activation='relu'))
-	model.add(Dropout(0.2))
-	model.add(Dense(64, activation='relu'))
-	
+	model.add(Dense(768, input_shape=(w*h,), use_bias=False))
+	#model.add(BatchNormalization())
+	model.add(Activation("relu"))
+	model.add(Dropout(0.2))	
+
+	model.add(Dense(256, activation='relu'))
+	model.add(Dense(128, activation='relu'))	
+	model.add(Dense(32, activation='relu'))
 	model.add(Dense(2, activation='relu'))
 	# output is (x, y, r)
 	#model.add(Lambda(pixelwise_reproduction))
@@ -113,15 +119,15 @@ x_train = x_train.reshape(n, w*h)
 model.fit(x_train, x_train, epochs=1, verbose=1, batch_size=batchSize)
 
 
-x_test, y_test = generate_data(w, h, n)
-x_test = x_test.reshape(n, w*h)
-y_pred = model.predict(x_test)
+#x_test, y_test = generate_data(w, h, n)
+#x_test = x_test.reshape(n, w*h)
+y_pred = model.predict(x_train)
 
-mse = np.mean((y_pred-y_test)**2)
+mse = np.mean((y_pred-y_train)**2)
 
 print("MSE:" + str(mse))
 
-plt.imshow(x_test[0].reshape(w, h), cmap='gray')
+plt.imshow(x_train[0].reshape(w, h), cmap='gray')
 plt.show()
 y = y_pred[0]
 y_img = generate_single_circle_image(w, h, y[0], y[1], r)
