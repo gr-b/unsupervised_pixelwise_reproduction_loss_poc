@@ -12,6 +12,10 @@ import tensorflow as tf
 
 from PIL import Image
 
+def show(image):
+	plt.imshow(image, cmap='gray')
+	plt.show()
+
 
 r = 25
 batchSize = 1
@@ -33,7 +37,7 @@ grayimg = toGrayscale(image)
 
 # Generates an image of the given width, height
 # With a randomly placed circle of random radius
-def generate_circle_image(w, h, cx, cy, cr):
+def generate_circle_image(w, h, cx, cy):
 	xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
 	#cx, cy, cr = np.random.randint(0, w), np.random.randint(0, h), np.random.randint(0, int(w/3))
 	# Stack grids so that they broadcast with xs, ys
@@ -43,24 +47,25 @@ def generate_circle_image(w, h, cx, cy, cr):
 	xcomp = ((xgrid.T - cx).T)**2
 	ycomp = ((ygrid.T - cy).T)**2 
 	
-	circle = ((xcomp + ycomp).T < cr**2).T
+	circle = ((xcomp + ycomp).T / (2*(100**2))).T
 	return circle
 
-def generate_single_circle_image(w, h, cx, cy, cr):
+def generate_single_circle_image(w, h, cx, cy):
 	xgrid, ygrid = np.meshgrid(np.arange(0, w), np.arange(0, h))
-	circle = (xgrid-cx)**2 + (ygrid-cy)**2 < cr**2
+	circle = (xgrid-cx)**2 + (ygrid-cy)**2
+	circle = (circle / (2*(100**2)))
 	return circle
 
 
 def generate_data(w, h, n):
 	y = np.array([[np.random.randint(0, w), np.random.randint(0, h)] for i in range(n)])
-	x = generate_circle_image(w, h, y[:, 0], y[:, 1], r)
+	x = generate_circle_image(w, h, y[:, 0], y[:, 1])
 	return x, y
 
 n = 2000
-x_train, y_train = generate_data(w, h, 1)
-x_train = np.array([x_train[0]]*n)
-y_train = np.array([y_train[0]]*n)
+x_train, y_train = generate_data(w, h, n)
+#x_train = np.array([x_train[0]]*n)
+#y_train = np.array([y_train[0]]*n)
 
 
 def greater_than_approx(a, b):
@@ -81,13 +86,9 @@ def pixelwise_reproduction_loss(y_true, y_pred):
 	xcomp = (K.transpose(K.transpose(x_grid) - cx))**2
 	ycomp = (K.transpose(K.transpose(y_grid) - cy))**2 
 
-	circle_mat = K.transpose(K.transpose(xcomp + ycomp))
-	circle_threshold = r
-
-	circle = 0.5*(circle_mat+circle_threshold + 
-			K.sqrt((circle_mat - circle_threshold)**2 + 0.01)
-		     )
-
+	circle = K.transpose(K.transpose(xcomp + ycomp))
+	circle = (circle / (2*(100**2)))
+	
 	circle = K.reshape(circle, (w*h, ))
 
 	mse = K.mean(((circle-y_true)**2))
@@ -125,10 +126,10 @@ print("MSE:" + str(mse))
 
 plt.imshow(x_train[0].reshape(w, h), cmap='gray')
 plt.show()
+
 y = y_pred[0]
-y_img = generate_single_circle_image(w, h, y[0], y[1], r)
-print(y_img.shape)
-plt.imshow(y_img, cmap='gray')
-plt.show()
+y_img = generate_single_circle_image(w, h, y[0], y[1])
+
+show(y_img)
 
 
